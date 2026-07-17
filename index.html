@@ -395,49 +395,150 @@ img { max-width: 100%; display: block; }
 .episode-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
 .episode-overview { font-size: 13px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* ============ VIDEO PLAYER ============ */
-.player-overlay {
-  position: fixed; inset: 0; z-index: 5000; background: #000;
-  display: flex; flex-direction: column;
-}
-.player-top {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-  padding: 16px 20px; display: flex; align-items: center; gap: 16px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-}
-.player-back { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); font-size: 18px; transition: var(--transition); }
-.player-back:hover { background: rgba(255,255,255,0.2); }
-.player-title { font-size: 16px; font-weight: 600; }
-.player-video-wrap { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-.player-video { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; }
-.player-controls {
-  position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-  padding: 40px 20px 20px; transition: var(--transition);
-}
-.player-controls.hidden { opacity: 0; pointer-events: none; }
-.player-progress { width: 100%; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; cursor: pointer; margin-bottom: 16px; position: relative; }
-.player-progress-fill { height: 100%; background: var(--gold); border-radius: 2px; position: relative; transition: width 0.1s linear; }
-.player-progress-fill::after { content: ''; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 50%; background: var(--gold); opacity: 0; transition: var(--transition); }
-.player-progress:hover .player-progress-fill::after { opacity: 1; }
-.player-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.player-bottom-left, .player-bottom-right { display: flex; align-items: center; gap: 12px; }
-.player-btn { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); font-size: 16px; color: rgba(255,255,255,0.8); }
-.player-btn:hover { color: white; background: rgba(255,255,255,0.1); }
-.player-btn-play { width: 48px; height: 48px; border-radius: 50%; background: var(--gold); color: #000; font-size: 20px; box-shadow: 0 0 20px var(--gold-glow); }
-.player-btn-play:hover { transform: scale(1.05); }
-.player-time { font-size: 13px; color: rgba(255,255,255,0.7); font-variant-numeric: tabular-nums; }
-.player-quality-select {
-  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 6px; padding: 4px 10px; font-size: 12px; color: white;
-  cursor: pointer;
-}
-.player-speed-select {
-  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 6px; padding: 4px 10px; font-size: 12px; color: white;
-  cursor: pointer;
+// ============ VIDEO PLAYER ============
+
+// Free video sources that actually work
+const FREE_VIDEOS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  'https://commondatatstorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4'
+];
+
+function getRandomVideo() {
+  return FREE_VIDEOS[Math.floor(Math.random() * FREE_VIDEOS.length)];
 }
 
+function playMovie(movieId) {
+  const overlay = document.getElementById('playerOverlay');
+  const video = document.getElementById('playerVideo');
+  const titleEl = document.getElementById('playerTitle');
+
+  video.src = getRandomVideo();
+  video.load();
+  video.play().catch(e => console.log('Autoplay blocked, user interaction needed'));
+
+  titleEl.textContent = '▶ Now Playing';
+  overlay.classList.add('active');
+  State.playerVisible = true;
+  document.body.style.overflow = 'hidden';
+  addToHistory(movieId, 'Playing Movie', null, 'movie');
+  setupPlayerControls(video);
+}
+
+function playTV(showId) {
+  const overlay = document.getElementById('playerOverlay');
+  const video = document.getElementById('playerVideo');
+  const titleEl = document.getElementById('playerTitle');
+
+  video.src = getRandomVideo();
+  video.load();
+  video.play().catch(e => console.log('Autoplay blocked'));
+
+  titleEl.textContent = '▶ Now Playing';
+  overlay.classList.add('active');
+  State.playerVisible = true;
+  document.body.style.overflow = 'hidden';
+  addToHistory(showId, 'Playing TV Show', null, 'tv');
+  setupPlayerControls(video);
+}
+
+function playTVSeason(showId, seasonNum) {
+  const overlay = document.getElementById('playerOverlay');
+  const video = document.getElementById('playerVideo');
+  const titleEl = document.getElementById('playerTitle');
+
+  video.src = getRandomVideo();
+  video.load();
+  video.play().catch(e => console.log('Autoplay blocked'));
+
+  titleEl.textContent = '▶ Season ' + seasonNum;
+  overlay.classList.add('active');
+  State.playerVisible = true;
+  document.body.style.overflow = 'hidden';
+  addToHistory(showId, 'Season ' + seasonNum, null, 'tv');
+  setupPlayerControls(video);
+}
+
+let playerControlsSetup = false;
+
+function setupPlayerControls(video) {
+  const progressFill = document.getElementById('playerProgressFill');
+  const timeDisplay = document.getElementById('playerTime');
+  const playBtn = document.querySelector('.player-btn');
+
+  function update() {
+    if (video.duration) {
+      const pct = (video.currentTime / video.duration) * 100;
+      progressFill.style.width = pct + '%';
+      timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+    }
+  }
+
+  video.addEventListener('timeupdate', update);
+  video.addEventListener('loadedmetadata', update);
+  video.addEventListener('ended', () => showToast('Playback finished', 'info'));
+  playBtn.onclick = togglePlay;
+}
+
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function closePlayer() {
+  const overlay = document.getElementById('playerOverlay');
+  const video = document.getElementById('playerVideo');
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  overlay.classList.remove('active');
+  State.playerVisible = false;
+  document.body.style.overflow = '';
+}
+
+function togglePlay() {
+  const video = document.getElementById('playerVideo');
+  const btn = document.querySelector('.player-btn');
+  if (video.paused) {
+    video.play();
+    btn.textContent = '⏸';
+  } else {
+    video.pause();
+    btn.textContent = '▶';
+  }
+}
+
+function toggleMute() {
+  const video = document.getElementById('playerVideo');
+  video.muted = !video.muted;
+  document.querySelectorAll('.player-btn')[1].textContent = video.muted ? '🔇' : '🔊';
+}
+
+function toggleFullscreen() {
+  const wrap = document.getElementById('playerVideoWrap');
+  if (!document.fullscreenElement) {
+    wrap.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function seekVideo(e) {
+  const video = document.getElementById('playerVideo');
+  const progress = document.getElementById('playerProgress');
+  const rect = progress.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  video.currentTime = pct * (video.duration || 0);
+}
 /* ============ AUTH PAGES ============ */
 .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(ellipse at center, var(--bg-secondary) 0%, var(--bg-primary) 100%); }
 .auth-card { width: 100%; max-width: 440px; background: var(--bg-glass-heavy); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 40px; }
